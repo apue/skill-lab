@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "A TUI launcher for reproducible Codex skill experiments"
 requires-python = ">=3.12"
 dependencies = [
+    "pyyaml>=6.0",
     "textual>=1.0",
 ]
 
