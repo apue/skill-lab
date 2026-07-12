@@ -33,7 +33,7 @@
 - Produces: `skill_lab.cli.run(argv: Sequence[str] | None = None) -> int`
 - Produces: `skill_lab.cli.main() -> NoReturn`
 
-- [ ] **Step 1: Write package configuration and failing CLI tests**
+- [x] **Step 1: Write package configuration and failing CLI tests**
 
 Create `pyproject.toml` with the `skilllab` console script, Textual runtime dependency, pytest/pytest-asyncio/Ruff dev dependencies, and Ruff/pytest configuration. Create tests that require `--version` and `--smoke-test` to return zero without opening an interactive terminal.
 
@@ -52,13 +52,13 @@ def test_smoke_test(capsys):
     assert capsys.readouterr().out.strip() == "Skill Lab app constructed successfully"
 ```
 
-- [ ] **Step 2: Run the tests and verify RED**
+- [x] **Step 2: Run the tests and verify RED**
 
 Run: `uv run pytest tests/test_cli.py -v`
 
 Expected: FAIL because `skill_lab.cli` does not exist.
 
-- [ ] **Step 3: Implement the minimal CLI**
+- [x] **Step 3: Implement the minimal CLI**
 
 ```python
 import argparse
@@ -91,13 +91,13 @@ def main() -> NoReturn:
     raise SystemExit(run())
 ```
 
-- [ ] **Step 4: Run focused tests and verify GREEN**
+- [x] **Step 4: Run focused tests and verify GREEN**
 
 Run: `uv run pytest tests/test_cli.py -v`
 
 Expected: 2 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add pyproject.toml .python-version .gitignore src/skill_lab tests/test_cli.py uv.lock
@@ -115,7 +115,7 @@ git commit -m "feat: add skilllab package and CLI"
 - Produces widget IDs: `#title`, `#project`, `#status`
 - Keyboard contract: `q` invokes application quit.
 
-- [ ] **Step 1: Write failing Textual pilot tests**
+- [x] **Step 1: Write failing Textual pilot tests**
 
 ```python
 from textual.widgets import Static
@@ -139,13 +139,13 @@ async def test_q_quits_app():
         assert not app.is_running
 ```
 
-- [ ] **Step 2: Run the tests and verify RED**
+- [x] **Step 2: Run the tests and verify RED**
 
 Run: `uv run pytest tests/test_app.py -v`
 
 Expected: FAIL because `SkillLabApp` is missing or does not expose the widget contract.
 
-- [ ] **Step 3: Implement the minimal Textual app**
+- [x] **Step 3: Implement the minimal Textual app**
 
 ```python
 from pathlib import Path
@@ -176,13 +176,13 @@ class SkillLabApp(App[None]):
         yield Footer()
 ```
 
-- [ ] **Step 4: Run focused and full tests**
+- [x] **Step 4: Run focused and full tests**
 
 Run: `uv run pytest tests/test_app.py -v && uv run pytest`
 
 Expected: all tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/skill_lab/app.py tests/test_app.py
@@ -202,11 +202,11 @@ git commit -m "feat: add Textual scaffold app"
 - CI contract: Python 3.12 and 3.13 run locked tests and Ruff checks.
 - Documentation contract: install, run, test, scope, roadmap and review links are copyable.
 
-- [ ] **Step 1: Add user and contributor documentation**
+- [x] **Step 1: Add user and contributor documentation**
 
 README must include project status, problem statement, non-goals, TUI sketch, uv install/development commands, document index and roadmap. CONTRIBUTING must describe branch, test and documentation expectations. SECURITY must warn that third-party skills are untrusted instructions/code and provide private reporting guidance without inventing an email address.
 
-- [ ] **Step 2: Add CI workflow**
+- [x] **Step 2: Add CI workflow**
 
 ```yaml
 name: CI
@@ -234,7 +234,7 @@ jobs:
       - run: uv run skilllab --smoke-test
 ```
 
-- [ ] **Step 3: Run complete validation**
+- [x] **Step 3: Run complete validation**
 
 Run:
 
@@ -249,7 +249,7 @@ uv run skilllab --smoke-test
 
 Expected: every command exits zero with no warnings.
 
-- [ ] **Step 4: Audit public content**
+- [x] **Step 4: Audit public content**
 
 Run:
 
@@ -264,7 +264,7 @@ git status --short
 
 Expected: the grep command returns no matches; status contains only intended files.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add README.md CONTRIBUTING.md SECURITY.md .github docs .agent-improvement-loop
@@ -277,3 +277,8 @@ git commit -m "docs: add project design and contributor guidance"
 - Deferred features: discovery, resolver and Codex launcher remain explicitly outside this plan.
 - Type consistency: `SkillLabApp`, `run`, `main` and widget IDs are consistent across tasks.
 - Placeholder scan: no implementation placeholder is required to execute this plan; product roadmap items are intentional non-goals.
+
+## Execution Notes
+
+- 2026-07-12：Task 1 的 smoke-test 依赖 `SkillLabApp`，因此先补 Task 2 的失败测试，再将 CLI 与最小 Textual app 合并到同一个 RED-GREEN cycle。四个测试均先因缺少模块失败，再在最小实现后通过。
+- 2026-07-12：真实 PTY 启动显示标题、当前目录、脚手架状态和 `q` 退出提示；发送 `q` 后进程以零退出码结束。
