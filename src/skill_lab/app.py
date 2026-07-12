@@ -15,6 +15,7 @@ from skill_lab.models import (
     DiscoveryResult,
     LaunchChoice,
     ResolutionResult,
+    ResolutionSource,
 )
 
 
@@ -192,9 +193,16 @@ class SkillLabApp(App[LaunchChoice | None]):
             return f"Degraded inventory\n\n{errors}\n\nEffective skills are unknown."
         project = self.resolution.project_delta
         run_changes = self.staged_enabled ^ self._initial_enabled
-        enabled = [
-            item.name for item in self.discovery.skills if item.runtime_path in self.staged_enabled
-        ]
+        project_by_path = {item.skill.runtime_path: item for item in self.resolution.project}
+        enabled = []
+        for item in self.discovery.skills:
+            if item.runtime_path not in self.staged_enabled:
+                continue
+            project_item = project_by_path[item.runtime_path]
+            source = (
+                project_item.source.value if project_item.enabled else ResolutionSource.RUN.value
+            )
+            enabled.append(f"{item.name} [{source}]")
         warnings = sorted(
             {
                 warning

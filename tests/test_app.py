@@ -102,9 +102,20 @@ async def test_review_shows_three_actions_and_launch_once_is_default():
         assert app.query_one("#save-launch", Button).display
         assert app.query_one("#launch-normal", Button).display
         assert app.focused.id == "launch-once"
+        assert "alpha [global]" in str(app.query_one("#review-summary", Static).content)
 
         await pilot.click("#launch-once")
         assert app.return_value is LaunchChoice.ONCE
+
+
+async def test_review_marks_staged_changes_with_run_source():
+    app = exact_app()
+    async with app.run_test() as pilot:
+        await pilot.press("right", "down", "down", "space", "enter")
+        await pilot.pause()
+
+        summary = str(app.query_one("#review-summary", Static).content)
+        assert "beta [run]" in summary
 
 
 async def test_enter_activates_focused_review_action():
