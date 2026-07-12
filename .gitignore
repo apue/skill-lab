@@ -7,5 +7,6 @@ __pycache__/
 build/
 dist/
 *.egg-info/
+.worktrees/
 .skill-lab/runtime/
 .skill-lab/results/
