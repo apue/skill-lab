@@ -1,41 +1,36 @@
 # Skill Lab 验收标准
 
-Status: review
+Status: accepted
 
-## 本次交付完成定义
+## 完成定义
 
-- [ ] 仓库为独立 Git 项目，并有公开 GitHub remote。
-- [ ] `pyproject.toml` 明确 Python、依赖、CLI、pytest 和 Ruff 配置。
-- [ ] `uv lock` 成功生成锁文件。
-- [ ] `uv run skilllab` 可启动 Textual TUI，用户可按 `q` 退出。
-- [ ] 自动测试覆盖入口元数据和 TUI 基本渲染/退出行为。
-- [ ] `uv run pytest` 全部通过。
-- [ ] `uv run ruff check .` 和 `uv run ruff format --check .` 通过。
-- [ ] README、产品规格、架构、决策、验证计划和实施计划可供中文 review。
-- [ ] 根目录 `AGENTS.md` 规定范围、验证、模块边界和文件访问策略。
-- [ ] 公开前检查提交文件，不包含 token、认证文件或机器专用绝对路径。
+- [ ] App Server discovery 能规范化 enabled、scope、source、dependency 和 error。
+- [ ] Filesystem fallback 只访问标准 allowlisted roots，并进入只读 degraded 模式。
+- [ ] Resolver 确定性实现 global、project、run 三层优先级和可解释 delta。
+- [ ] Portable locator 不把机器绝对路径写入可提交配置。
+- [ ] `.skilllab/config.toml`、嵌套 `.gitignore` 和 per-run JSON 遵守 project-root path guard。
+- [ ] Selector 支持折叠、搜索、skill/package 切换、退出确认和 Review。
+- [ ] Review 提供 Launch once、Save and launch、Launch normally。
+- [ ] Experiment 使用相同 overrides preflight 后启动原生 Codex CLI。
+- [ ] Degraded/错误状态始终保留 normal launch，除非 Codex CLI 本身不可执行。
+- [ ] Experiment 与 passthrough records 遵守隐私契约并传播 Codex 退出码。
+- [ ] 自动测试、Ruff、format、smoke-test 和内容审计通过。
+- [ ] 真实 Codex macOS E2E 在发布前通过。
+- [ ] 仓库包含 MIT License。
 
-## 验收场景
+## 核心场景
 
-1. Given 新 clone 的仓库和已安装的 uv，When 执行 `uv sync --dev`，Then 项目依赖可被确定性安装。
-2. Given 依赖已安装，When 执行 `uv run skilllab`，Then 终端显示 Skill Lab 脚手架界面。
-3. Given TUI 已启动，When 用户按 `q`，Then 应用正常退出且无 traceback。
-4. Given 项目源码，When 执行测试和 Ruff 命令，Then 所有自动化检查通过。
+1. Global enabled skill 被 project exclude 后默认禁用，run include 可临时恢复。
+2. Global disabled skill 被 project include 后默认启用，run exclude 可临时关闭。
+3. Save 将最终 staged 集合保存为相对 global 的最小差异。
+4. 不可移植 skill 可 Launch once，但 Save 被解释性错误阻止。
+5. App Server/per-cwd error 显示 degraded inventory，并允许 normal launch。
+6. Preflight 集合变化不会以 experiment 启动，用户确认后可 normal launch。
+7. Experiment record 创建失败时降级；passthrough record 失败仍启动 Codex。
+8. `.skilllab` symlink 指向 project 外时拒绝写入。
+9. Search 过滤时 package toggle 仍改变整个 package。
+10. Codex 退出码由 `skilllab` 原样返回。
 
-## 人工 Review 清单
+## 非验收范围
 
-- [ ] 产品目标聚焦于 skill 效果实验，而不是库存管理。
-- [ ] MVP 与未来功能边界清楚。
-- [ ] TUI 是主要交互，不依赖手输 skill 列表。
-- [ ] global、project 和 run overlay 三层语义可理解。
-- [ ] `Launch once` 与 `Save as project defaults and launch` 区别清楚。
-- [ ] 模块边界支持未来替换 Codex 适配方式。
-- [ ] 权限文档区分 Skill Lab 本身与 Codex 子进程，并禁止读取 Codex 凭据/会话数据。
-
-## 非本次验收范围
-
-- 真实 skill discovery。
-- skill 多选和 package 折叠。
-- 配置保存。
-- Codex 子进程启动。
-- A/B 比较与评价录入。
+- Skill 生命周期管理、自动评价、团队配置、用户级状态和非 macOS 发布支持。

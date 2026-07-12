@@ -1,129 +1,69 @@
 # Skill Lab 架构
 
-Status: review
+Status: accepted
 
 ## 总体设计
 
-Skill Lab 采用“确定性解析器 + TUI 选择器 + Codex 适配器”的分层结构。TUI 只产生用户意图，配置解析器计算最终有效 skill 集合，Codex 适配器把该集合转换为新进程启动配置。运行证据独立落盘，避免 UI、配置和进程控制相互耦合。
+Skill Lab 使用“Codex adapter + discovery normalizer + pure resolver + project persistence + Textual selector”的分层结构。App Server 只提供结构化 skill catalog 与 preflight；真正的交互会话始终由原生 Codex CLI 承载。任何实验能力故障都降级为显式 normal launch，不伪造可复现证据。
 
 ## 模块边界
 
-- `app.py`：Textual 应用组合、页面切换和键盘交互。
-- `discovery.py`：从 Codex 和文件系统读取已安装 skills，不决定启用状态。
-- `resolution.py`：合并 global、project 和 run overlay，产生可解释的有效集合。
-- `config.py`：读取和写入用户/项目 TOML，不包含 TUI 逻辑。
-- `codex.py`：生成并执行 Codex 启动命令，不负责选择策略。
-- `records.py`：保存运行环境指纹和人工证据。
-- `cli.py`：控制入口、退出码和依赖装配。
+- `models.py`：不可变领域类型、portable locator、错误与运行模式。
+- `discovery.py`：规范化 App Server catalog、受限 filesystem inventory、package grouping 和 fingerprints。
+- `resolution.py`：纯函数合并 global/project/run，不做 I/O。
+- `config.py`：project root 识别、TOML schema、locator resolution、path guard 与原子写入。
+- `codex.py`：App Server JSONL 协议、能力探测、一次性 overrides、preflight 与 CLI 子进程。
+- `records.py`：project-local JSON 运行记录。
+- `app.py`：Textual selector/review/degraded UI，只表达用户意图。
+- `cli.py`：依赖装配、TUI 结果处理、启动和退出码。
 
-## 数据与控制流
+## 数据流
 
 ```text
-Codex/filesystem discovery
-          │
-          ▼
- InstalledSkill[]
-          │
-global + project config ──► resolver ◄── run overlay from TUI
-                                  │
-                                  ▼
-                         EffectiveSkillSet
-                           │             │
-                           ▼             ▼
-                    Codex launcher   run recorder
+codex app-server skills/list ──► discovery ──► InstalledSkill[]
+           │                         │
+           │ failure                 ▼
+           └────────► fallback inventory / degraded UI
+
+InstalledSkill[] + project config + staged overlay
+                         │
+                         ▼
+                   pure resolver
+                         │
+                         ▼
+                   review snapshot
+                         │
+              same override preflight
+                         │ exact match
+                         ▼
+                 native Codex CLI
+                    │          │
+                    ▼          ▼
+                 records     exit code
 ```
 
-## 状态模型
+## 核心类型
 
-“已下载”“当前项目允许”“本次运行启用”是不同概念。MVP 不把文件存在等同于启用状态。
+- `SkillLocator(kind, value, name)`：项目配置的稳定引用。
+- `InstalledSkill(runtime_path, locator, name, description, enabled, scope, package, version, fingerprint, dependencies)`。
+- `SkillLayer(include, exclude)`。
+- `ResolvedSkill(skill, enabled, source)`。
+- `ResolutionResult(project, run, project_delta, run_delta)`。
+- `DiscoveryResult(skills, errors, mode)`。
+- `LaunchRequest(mode, cwd, effective_skills)` 与 `LaunchResult(exit_code, record_path)`。
 
-- Installed：skill artifact 可被发现。
-- Inherited：由 global baseline 或项目默认引入。
-- Excluded：被更高优先级配置排除。
-- Run override：仅本次启动改变。
-- Effective：解析后的最终布尔状态。
+## 安全边界
 
-## TUI 结构
+- Discovery 只访问明确允许的 skill metadata 文件。
+- 所有项目写入经过集中 realpath containment guard。
+- 子进程通过 argv 启动，不拼接 shell command。
+- Skill Lab 不添加降低 sandbox、绕过 approval 或扩大 writable roots 的参数。
+- Passthrough 不声称知道 effective skills。
+- 记录不包含对话、凭据、环境变量或外部绝对路径。
 
-MVP 计划包含三个页面：
+## 错误策略
 
-1. Skill selector：分组、搜索、多选和来源说明。
-2. Review：展示 delta 和最终集合。
-3. Launch status：展示记录写入和 Codex 子进程状态。
-
-本次脚手架只实现一个可启动的状态页，用来验证工程配置和 Textual 生命周期。
-
-## 外部依赖
-
-- Python 3.12+：运行时。
-- uv：环境、锁文件和 tool 安装。
-- Textual：TUI 框架。
-- Codex CLI/app-server：未来运行时适配目标。
-- pytest：测试。
-- Ruff：lint 与格式检查。
-
-## Capability Boundary
-
-Skill Lab 采用应用级路径策略，而不是在 MVP 中实现 OS 级 sandbox。
-
-### Discovery capability
-
-- 首选 Codex `skills/list`，减少对用户目录的直接扫描。
-- fallback 只接受明确配置的 skill roots。
-- 允许跟随 skill symlink 读取目标 `SKILL.md` metadata。
-- 禁止扫描整个 `~/.codex`，禁止读取 auth/session/log/history，禁止执行第三方脚本。
-
-### Write capability
-
-- TUI selection 本身不产生写入。
-- `Launch once` 不写项目默认配置。
-- `Save as project defaults and launch` 是目标项目写入的明确授权动作。
-- 写入前解析目标路径和符号链接，验证目标位于 project root 内，再进行原子替换。
-- MVP 不写 `~/.codex` 或任意用户级状态目录。
-
-### Child process capability
-
-Codex adapter 只提供 skill selection 和必要启动信息，不添加绕过 approval 或扩大 sandbox 的默认参数。Codex 子进程的权限仍由用户现有 Codex 配置控制。
-
-## 错误处理原则
-
-- 配置解析失败时不启动 Codex，并指出具体文件与字段。
-- 同层 include/exclude 冲突时失败，不自动选择一方。
-- 找不到 Codex 时保留用户配置，不产生部分运行记录。
-- 记录写入失败时不声称实验可复现。
-- 子进程退出码原样映射到 Skill Lab 的结果状态。
-
-## 备选方案
-
-### 每项目复制 skills
-
-- 优点：直观、原生发现。
-- 缺点：重复、升级漂移，且不能排除其他 global skills。
-- 决策：拒绝作为主架构。
-
-### 多个 CODEX_HOME
-
-- 优点：隔离彻底。
-- 缺点：同时分裂 auth、plugins、MCP 和会话状态。
-- 决策：拒绝作为默认方案。
-
-### TypeScript/Bun
-
-- 优点：可编译单文件，TUI 组件生态丰富。
-- 缺点：本阶段增加构建与发布复杂度。
-- 决策：Python + uv + Textual 优先验证产品价值。
-
-## 风险
-
-- Codex skill 配置接口继续演进。
-  - 缓解：把所有版本相关逻辑封装在 `codex.py`。
-- TUI 选择状态与实际 Codex 可见集合不一致。
-  - 缓解：启动前用 Codex prompt/config 诊断结果做契约验证。
-- 过早扩张为 package manager。
-  - 缓解：MVP 明确排除 marketplace、安装和更新。
-- 路径遍历或 symlink 使项目写入逃逸到外部目录。
-  - 缓解：集中 path guard，解析真实路径后验证 project-root containment，并以单元测试覆盖。
-- discovery 意外读取 Codex 凭据或会话数据。
-  - 缓解：优先 API discovery；fallback 使用 allowlisted roots 和明确文件名，不进行 home-directory crawl。
-- skill 效果高度随机。
-  - 缓解：记录环境，后续加入重复运行与人工评价，而不是单次自动评分。
+- 配置、catalog 或 preflight 错误禁用 experiment/save，但保留 normal launch。
+- Codex CLI 不存在或无法执行时返回明确错误。
+- Experiment record 无法创建时降级；passthrough record 失败不阻塞。
+- 子进程退出码原样传播。

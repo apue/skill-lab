@@ -27,3 +27,28 @@ Status: review
 - `config.py`：TOML persistence。
 - `codex.py`：Codex adapter。
 - `records.py`：实验运行记录。
+
+<!-- generated-codebase-map:start -->
+## Generated Codebase Summary
+
+- File count: 36
+
+### Top Directories
+- `docs`: 13 files
+- `.`: 9 files
+- `.pytest_cache`: 4 files
+- `.ruff_cache`: 4 files
+- `src`: 3 files
+- `tests`: 2 files
+- `.github`: 1 files
+
+### File Types
+- `.md`: 17
+- `<none>`: 8
+- `.py`: 5
+- `.TAG`: 2
+- `.lock`: 1
+- `.toml`: 1
+- `.json`: 1
+- `.yml`: 1
+<!-- generated-codebase-map:end -->

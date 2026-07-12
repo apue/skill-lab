@@ -21,3 +21,9 @@ Status: review
 - 不自建 marketplace；优先适配现有 CLI。
 - 不移动第三方 skill 原始目录；使用 Codex 配置表达运行时策略。
 - 不自建 TUI event loop；使用 Textual。
+
+<!-- generated-reuse-index:start -->
+## Generated Reuse Candidates
+
+- No filename-based candidates found.
+<!-- generated-reuse-index:end -->

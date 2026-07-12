@@ -1,105 +1,89 @@
 # Skill Lab 产品规格
 
-Status: review
+Status: accepted
 
 ## 目标
 
-Skill Lab 是一个面向个人 Codex 用户的 TUI 实验启动器。它帮助用户在启动新 Codex 会话前，看清并选择本次运行可见的 skills，从而以可复现的方式比较“有 skill”和“无 skill”的实际效果。
+Skill Lab 是面向 macOS 个人 Codex 用户的 TUI 实验启动器。它让用户在启动新 Codex 会话前查看、调整和确认本次运行的有效 skill 集合，并记录足以解释实验环境的证据。
 
-## 核心问题
+成功意味着：用户无需手输 skill 名称即可选择；每个状态都有 global、project 或 run 来源；实验启动使用经过 Codex 预检的精确集合；Skill Lab 故障不会阻止普通 Codex 启动；所有 Skill Lab 写入都位于当前 project root 内。
 
-当前 skill 生态的主要困难不是安装，而是缺少可靠的采用证据：
+## Discovery
 
-- 全局 skills 会在不同项目之间产生上下文污染。
-- 在同一对话中口头要求“不要使用某 skill”不能构成干净隔离。
-- 手输 skill 名称容易出错，且用户很难确认最终有效集合。
-- skill 的价值依赖任务、项目、模型和版本，不能只用全局启用状态表达。
+- 正常模式通过本地 `codex app-server` 的 `skills/list` 获取当前项目的 skills、enabled、scope、source、interface 和 dependencies。
+- App Server 只负责结构化 discovery 和启动预检，最终会话统一由原生 Codex CLI 启动。
+- App Server 启动、协议、超时、schema 或 per-cwd error 会使实验能力进入 degraded 状态；不得把部分 App Server 结果与 filesystem 结果混合后声称完整。
+- Filesystem fallback 只读 `<project-root>/.codex/skills` 与 `$CODEX_HOME/skills`；`CODEX_HOME` 未设置时使用 `~/.codex/skills`。
+- Fallback 只检查 root 本身和直接 skill 子目录，可跟随 skill symlink；只读取或哈希 `SKILL.md` 与可选 `SKILL.json`。
+- Fallback 不递归扫描整个 `.codex`，不读取 config、auth、session、log、history，不执行脚本或下载内容。
+- Fallback 只能展示 inventory，不能推断 global enabled，因而不能 Save 或精确实验启动。
 
-## 用户与使用场景
+## Skill 身份与版本
 
-- 用户：在本机使用 Codex 开发多个个人项目的开发者。
-- 场景一：从全局 baseline 中为当前项目排除一个有干扰的通用 skill。
-- 场景二：临时启用一个新 skill，启动干净会话进行体验。
-- 场景三：确认选择后，将其保存为当前项目默认设置。
-- 场景四：记录运行时的有效 skill 集合，为后续人工比较保留证据。
+- 运行时 identity 是解析后的绝对 `SKILL.md` 路径，用于去重、选择和一次性 Codex override。
+- 可提交配置使用 portable locator：`project-relative`、`codex-home-relative` 或 `system`。
+- `project-relative` 相对 project root；`codex-home-relative` 相对 `$CODEX_HOME`；`system` 使用 Codex scope 与唯一 skill name。
+- 无法生成 portable locator 的 skill 可用于 `Launch once`，但不得保存为项目 defaults。
+- 版本指纹优先采用声明 version；缺失时计算 `SKILL.md` 与可选 `SKILL.json` 文件字节的 SHA-256，不读取其他资源。
 
-## MVP 要求
-
-### TUI 选择器
-
-- `skilllab` 在当前目录启动全屏 TUI。
-- TUI 列出已发现的 skills，并显示有效启用状态与状态来源。
-- 用户使用方向键导航、Space 切换待启动状态、`/` 搜索、Enter 进入确认页、`q` 退出。
-- package 可以折叠，并允许整体或逐项切换。
-- 确认页展示相对项目默认值的变更和最终有效 skill 集合。
-
-### 启动语义
-
-- `Launch once` 只影响本次新启动的 Codex 会话。
-- `Save as project defaults and launch` 保存项目覆盖后再启动 Codex。
-- 每次启动必须创建新 Codex 会话，不能依赖当前对话中的口头开关。
-- 启动器必须使用精确的 Codex skill 配置，而不是移动原始 skill 目录。
-
-### 配置层级
+## 三层配置
 
 优先级从低到高：
 
-1. 用户 global baseline。
-2. 项目默认 include/exclude。
-3. 本次运行临时覆盖。
+1. Codex `skills/list.enabled` 提供的 global baseline。
+2. 项目 defaults。
+3. 当前进程内的 run overlay。
 
-冲突的同层设置必须报错，不静默猜测。
+- Project defaults 保存相对 global baseline 的最小 include/exclude 差异。
+- Run overlay 保存相对 project effective state 的临时差异。
+- 同层冲突、未发现 locator、歧义 locator、未知 schema 或配置错误会禁用实验模式，但不影响 normal launch。
+- `Save as project defaults and launch` 把 staged 最终集合重算为相对 global 的最小差异，写入配置，清空 run overlay，再启动同一最终集合。
+- 空 override 仍保存版本化空配置。
 
-### 证据记录
+## TUI
 
-每次由 Skill Lab 启动 Codex 时，记录：
+- Project root 使用 Git top-level；非 Git 目录使用启动 cwd。
+- Package 默认折叠；方向键导航，左右键展开/折叠，Space 切换 skill 或完整 package，Enter 进入 Review，`q` 退出。
+- 混合 package 的 Space 行为是 mixed -> all enabled -> all disabled。
+- `/` 对 name、description、package 做大小写不敏感子串搜索，保持稳定排序；过滤期间切换 package 仍影响完整 package。
+- 有 staged changes 时 `q` 需要确认丢弃；无变化时直接退出。
+- Review 展示 project 相对 global、run 相对 project、最终 enabled 集合、来源和 dependency warnings。
+- Review 始终提供 `Launch once`、`Save as project defaults and launch`、`Launch Codex normally`；默认焦点为 `Launch once`。
 
-- 时间与工作目录。
-- 模型标识（可获得时）。
-- 有效 skills 及其路径或版本指纹。
-- 项目 Git commit（可获得时）。
-- 本次是临时运行还是保存后的项目默认运行。
+## 启动语义
 
-### 文件访问与子进程权限
+- 所有会话通过原生 Codex CLI 子进程启动。
+- 实验启动只增加一次性 skill overrides，不写 `~/.codex`，不改变 sandbox、approval 或其他用户配置。
+- 实验启动前必须使用相同 overrides 调用短生命周期 App Server，确认实际 enabled 集合与 Review 完全一致。
+- Preflight 失败或集合变化时展示原因；用户二次确认后可 normal launch，不得自动把旧 staged state 当作实验配置。
+- `Launch Codex normally` 忽略 Skill Lab project/run 层并继承用户现有 Codex 配置。
+- Codex 结束后更新记录、打印记录路径和退出状态，以 Codex 退出码返回 shell，不恢复 Textual 页面。
+- 只有找不到或无法启动 Codex CLI 本身时，Skill Lab 无法提供 normal launch。
 
-- discovery 优先使用 Codex `skills/list`；文件系统 fallback 只读取明确配置的 skill roots。
-- 不递归扫描整个 `~/.codex`，不读取 auth、session、log 或 history 数据。
-- discovery 只读取 `SKILL.md` frontmatter 和必要 metadata，不执行第三方 skill 脚本。
-- 只有用户明确选择 `Save as project defaults` 后，才能写入目标项目配置。
-- MVP 不修改 `~/.codex/skills`、`~/.codex/config.toml` 或第三方 skill 源目录。
-- Skill Lab 不降低其启动的 Codex 子进程现有 sandbox/approval 策略。
+## 项目写入与运行证据
 
-## 本次脚手架交付
+唯一写入命名空间：
 
-- Python 3.12+、uv、Textual、pytest、Ruff 项目配置。
-- 可通过 `uv run skilllab` 启动的最小 TUI。
-- TUI 显示产品名称、当前工作目录、脚手架状态和退出提示。
-- 单元测试、CLI smoke test 和中文主要文档。
-- 不实现真实 skill 扫描、选择持久化或 Codex 启动。
+```text
+.skilllab/
+├── config.toml
+├── .gitignore
+└── runs/
+    └── <UTC timestamp>-<run id>.json
+```
 
-## 非目标
+- `config.toml` 是可提交的项目 defaults，包含 `schema_version` 和 portable include/exclude locators。
+- `.gitignore` 只忽略 `/runs/`；Skill Lab 不修改项目根 `.gitignore`。
+- `runs/` 是本机证据。
+- 写入使用同目录临时文件和原子替换；解析 symlink 后真实目标必须位于 project root。
+- Save 时已确认的 TUI 最终状态是权威，可覆盖会话期间的外部配置变更。
+- Experiment record 在启动前创建，退出后更新，包含 schema、run ID、UTC 时间、状态、退出码、模式、project-relative cwd、Git commit、Codex 版本/模型、解析摘要、最终 skills、fingerprints、dependency warnings 与 preflight。
+- 不记录 prompt、对话、环境变量、auth 信息或外部绝对路径。
+- Experiment record 创建失败时只允许 normal launch。
+- Normal launch 尽力记录为 `passthrough`，`effective_skills = unknown`；记录失败不影响启动。
 
-- 自建 marketplace 或 registry。
-- 安装、更新、删除 skills。
-- 自动评价 skill 质量。
-- X/社交平台作者关注和 release notes 监控。
-- 团队配置同步、审批和权限管理。
-- 跨 Claude、Cursor 等其他 agent 的统一管理。
-- 在本次脚手架中实现完整 MVP 行为。
-- 自定义 OS sandbox、RBAC 或通用 permission prompt framework。
+## 支持范围与非目标
 
-## 约束
-
-- 个人优先，不为未验证的团队需求增加复杂度。
-- 正常使用以 TUI 为主，不要求用户手输 skill 名称列表。
-- Marketplace/package 操作未来优先复用现有生态，不在本项目重造。
-- 先验证隔离与人工比较是否有价值，再扩展生命周期管理。
-
-## 开放问题
-
-- [ ] 公开仓库采用何种开源许可证。
-- [ ] MVP 通过 Codex app-server 还是 CLI `-c skills.config=...` 实现启动适配。
-
-## 验收链接
-
-见 `ACCEPTANCE.md`。
+- 正式支持 macOS、Python 3.12+、uv、Textual 和通过能力探测的 Codex CLI。
+- 许可证为 MIT。
+- 不实现 marketplace、registry、install/update/remove、自动评分、团队同步、跨 agent 管理、用户级 Skill Lab 状态目录或 Windows/Linux 正式支持。
