@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "A TUI launcher for reproducible Codex skill experiments"
 requires-python = ">=3.12"
 dependencies = [
+    "pyyaml>=6.0",
     "textual>=1.0",
 ]
 
@@ -27,6 +28,9 @@ packages = ["src/skill_lab"]
 [tool.pytest.ini_options]
 addopts = "-ra"
 asyncio_mode = "auto"
+markers = [
+    "real_codex_e2e: opt-in macOS release gate using an isolated Codex home",
+]
 testpaths = ["tests"]
 
 [tool.ruff]

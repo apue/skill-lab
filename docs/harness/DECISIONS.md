@@ -1,6 +1,38 @@
 # Skill Lab 决策记录
 
-Status: review
+Status: accepted
+
+## 2026-07-12：项目内状态与 portable locator
+
+Status: accepted
+
+Decision: 所有 Skill Lab 写入位于 `.skilllab/`；可提交配置使用 portable locator，运行时仍用解析后的 `SKILL.md` 路径。
+
+Consequences: 不可移植 skill 只能 Launch once；项目配置不泄漏机器绝对路径。
+
+## 2026-07-12：App Server discovery 与 CLI launch 分离
+
+Status: accepted
+
+Decision: App Server 只做 `skills/list` 和 preflight；所有会话由原生 Codex CLI 启动。
+
+Consequences: 保留原生 Codex TUI；协议失败时可明确降级为 passthrough。
+
+## 2026-07-12：永不伪造实验成功
+
+Status: accepted
+
+Decision: Catalog、配置、preflight 或 experiment record 失败时禁用实验声明，但始终提供用户确认后的 normal launch。
+
+Consequences: Skill Lab 不阻止 Codex 使用，也不把未知 skill 集合记录为可复现实验。
+
+## 2026-07-12：MVP 只写当前项目
+
+Status: accepted
+
+Decision: MVP 不建立用户级 Skill Lab 状态目录，运行记录保存在项目 `.skilllab/runs/` 并由嵌套 `.gitignore` 忽略。
+
+Consequences: 只读项目不能完成实验记录；跨项目历史与用户级 roots 延后。
 
 ## 2026-07-12：把产品定义为实验启动器
 
@@ -71,3 +103,13 @@ Status: accepted
 Decision: Skill Lab 不默认绕过 approval、不扩大 sandbox，Codex 子进程继承用户现有权限策略。
 
 Consequences: skill selection 与文件系统权限保持正交，Skill Lab 不成为隐式提权入口。
+
+## 2026-07-12：MVP 使用 scope 作为 package 分组
+
+Status: accepted
+
+Context: 当前 Codex `skills/list` 的 `SkillMetadata` 提供 scope，但不提供稳定 package/source 字段。
+
+Decision: Discovery 保留 Codex scope，并在 MVP selector 中以 scope 作为稳定分组标签。
+
+Consequences: 不从目录结构猜测 package ownership；未来协议提供权威 package/source 后只需更新 discovery adapter。

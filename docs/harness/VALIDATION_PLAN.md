@@ -1,17 +1,12 @@
 # Skill Lab 验证计划
 
-Status: review
+Status: accepted
 
 ## Validation Mode
 
-Modes: strict-tdd + smoke-test + manual-acceptance + review-only
+Selected modes: strict-tdd + contract-test + schema-check + Textual pilot + smoke-test + real-codex-e2e + manual-acceptance
 
-Reason:
-
-- Python 入口和 TUI 生命周期属于确定性行为，采用严格 TDD。
-- 实际终端启动采用 smoke test。
-- TUI 文案与产品边界需要用户人工 review。
-- 规格和架构文档采用一致性审查。
+Reason: Resolver、parser、path guard 和状态机需要严格 TDD；App Server/CLI 需要协议契约测试；TOML/JSON 需要 schema check；TUI 使用 pilot；发布前在 macOS 验证真实 Codex binary。
 
 ## Commands
 
@@ -22,29 +17,22 @@ uv run ruff check .
 uv run ruff format --check .
 uv run skilllab --version
 uv run skilllab --smoke-test
-TOKEN_PREFIX='g''ho_'
-HOME_PREFIX='/''Users/'
-API_PATTERN='api[_-]?''key'
-PRIVATE_PATTERN='BEGIN .*PRIVATE ''KEY'
-git grep -nE "${TOKEN_PREFIX}[A-Za-z0-9]+|${API_PATTERN}|${PRIVATE_PATTERN}|${HOME_PREFIX}" -- ':!.git/*'
+uv run pytest -m real_codex_e2e
+if git grep -nE 'gho_[A-Za-z0-9]+|api[_-]?key|BEGIN .*PRIVATE KEY|/Users/' -- ':!.git/*' ':!docs/superpowers/plans/*' ':!docs/harness/VALIDATION_PLAN.md'; then
+  exit 1
+fi
 ```
 
 ## Pass Criteria
 
+- 常规测试不依赖真实用户 Codex state。
+- real-codex-e2e 仅在发布 gate 显式启用并使用隔离 fixtures。
 - 所有命令退出码为 0。
-- pytest 覆盖版本输出、smoke-test 和 Textual pilot 退出流程。
-- Ruff 没有 lint 或格式问题。
-- smoke-test 不需要交互式终端且能证明应用可构造。
-- 内容审计不发现 token、私钥或机器专用绝对路径。
+- 没有 token、私钥或提交范围内的机器专用绝对路径。
 
 ## Manual Checks
 
-- [ ] TUI 标题和说明文案符合产品定位。
-- [ ] `q` 可以退出，无 traceback。
-- [ ] README 的安装和开发命令可以复制执行。
-- [ ] GitHub 仓库为 public。
-
-## Known Gaps
-
-- 本次不验证真实 skill scanning 和 Codex 启动。
-- 终端颜色和小尺寸兼容性在完整 selector 实现时验证。
+- [ ] 用 2–3 个真实 skills 比较有/无结果。
+- [ ] 三层来源和 degraded 提示可理解。
+- [ ] Normal launch 不携带 Skill Lab overrides。
+- [ ] Codex 子进程保留用户现有 sandbox/approval。
