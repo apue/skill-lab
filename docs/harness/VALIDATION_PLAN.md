@@ -18,7 +18,9 @@ uv run ruff format --check .
 uv run skilllab --version
 uv run skilllab --smoke-test
 uv run pytest -m real_codex_e2e
-git grep -nE 'gho_[A-Za-z0-9]+|api[_-]?key|BEGIN .*PRIVATE KEY|/Users/' -- ':!.git/*' ':!docs/superpowers/plans/*'
+if git grep -nE 'gho_[A-Za-z0-9]+|api[_-]?key|BEGIN .*PRIVATE KEY|/Users/' -- ':!.git/*' ':!docs/superpowers/plans/*' ':!docs/harness/VALIDATION_PLAN.md'; then
+  exit 1
+fi
 ```
 
 ## Pass Criteria

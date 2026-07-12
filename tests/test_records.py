@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -37,12 +38,22 @@ def resolved_skill(tmp_path: Path) -> ResolvedSkill:
 def test_experiment_record_is_project_local_private_and_finishable(tmp_path: Path):
     project = tmp_path / "project"
     project.mkdir()
+    enabled = resolved_skill(tmp_path)
+    disabled = ResolvedSkill(
+        replace(
+            enabled.skill,
+            name="disabled",
+            dependencies=("env_var:DISABLED_TOKEN",),
+        ),
+        False,
+        ResolutionSource.RUN,
+    )
 
     path = create_run_record(
         project,
         mode="experiment_once",
         invocation_cwd=project,
-        resolved=[resolved_skill(tmp_path)],
+        resolved=[enabled, disabled],
         codex_version="codex-cli 0.144.1",
         git_commit="abc123",
         preflight={"matched": True},

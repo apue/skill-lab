@@ -1,11 +1,11 @@
 # Skill Lab 复用索引
 
-Status: review
+Status: accepted
 
 ## 可复用能力
 
 - Codex CLI：运行时和新会话启动，不在 Skill Lab 内复制 agent 实现。
-- Codex `skills.config` / app-server：未来 skill enable/disable 适配目标。
+- Codex `skills.config` / App Server：当前 discovery、preflight 和一次性 enable/disable 边界。
 - Vercel `skills` CLI：未来 marketplace/package 操作候选，不纳入 MVP。
 - Textual：TUI 生命周期、布局、键盘输入和测试 pilot。
 - uv：Python runtime、依赖锁定和 tool installation。

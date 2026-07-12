@@ -34,7 +34,10 @@ def _frontmatter(skill_md: Path) -> dict[str, object]:
 
 def fingerprint_skill(skill_md: Path) -> str:
     """Return a declared version or a hash of the two allowed metadata files."""
-    metadata = _frontmatter(skill_md)
+    try:
+        metadata = _frontmatter(skill_md)
+    except DiscoveryError:
+        metadata = {}
     version = metadata.get("version")
     if isinstance(version, (str, int, float)):
         return f"version:{version}"
@@ -47,7 +50,10 @@ def fingerprint_skill(skill_md: Path) -> str:
 
 
 def _version(skill_md: Path) -> str | None:
-    value = _frontmatter(skill_md).get("version")
+    try:
+        value = _frontmatter(skill_md).get("version")
+    except DiscoveryError:
+        return None
     return str(value) if isinstance(value, (str, int, float)) else None
 
 

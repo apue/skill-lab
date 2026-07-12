@@ -4,19 +4,19 @@ Status: accepted
 
 ## 完成定义
 
-- [ ] App Server discovery 能规范化 enabled、scope、source、dependency 和 error。
-- [ ] Filesystem fallback 只访问标准 allowlisted roots，并进入只读 degraded 模式。
-- [ ] Resolver 确定性实现 global、project、run 三层优先级和可解释 delta。
-- [ ] Portable locator 不把机器绝对路径写入可提交配置。
-- [ ] `.skilllab/config.toml`、嵌套 `.gitignore` 和 per-run JSON 遵守 project-root path guard。
-- [ ] Selector 支持折叠、搜索、skill/package 切换、退出确认和 Review。
-- [ ] Review 提供 Launch once、Save and launch、Launch normally。
-- [ ] Experiment 使用相同 overrides preflight 后启动原生 Codex CLI。
-- [ ] Degraded/错误状态始终保留 normal launch，除非 Codex CLI 本身不可执行。
-- [ ] Experiment 与 passthrough records 遵守隐私契约并传播 Codex 退出码。
-- [ ] 自动测试、Ruff、format、smoke-test 和内容审计通过。
-- [ ] 真实 Codex macOS E2E 在发布前通过。
-- [ ] 仓库包含 MIT License。
+- [x] App Server discovery 能规范化 enabled、path、scope、interface、dependency 和 error。
+- [x] Filesystem fallback 只访问标准 allowlisted roots，并进入只读 degraded 模式。
+- [x] Resolver 确定性实现 global、project、run 三层优先级和可解释 delta。
+- [x] Portable locator 不把机器绝对路径写入可提交配置。
+- [x] `.skilllab/config.toml`、嵌套 `.gitignore` 和 per-run JSON 遵守 project-root path guard。
+- [x] Selector 支持折叠、搜索、skill/package 切换、退出确认和 Review。
+- [x] Review 提供 Launch once、Save and launch、Launch normally。
+- [x] Experiment 使用相同 overrides preflight 后启动原生 Codex CLI。
+- [x] Degraded/错误状态始终保留 normal launch，除非 Codex CLI 本身不可执行。
+- [x] Experiment 与 passthrough records 遵守隐私契约并传播 Codex 退出码。
+- [x] 自动测试、Ruff、format、smoke-test 和内容审计通过。
+- [x] 真实 Codex macOS E2E 在发布前通过。
+- [x] 仓库包含 MIT License。
 
 ## 核心场景
 

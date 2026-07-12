@@ -24,6 +24,48 @@ class FakeRunner:
         return subprocess.CompletedProcess(argv, self.returncode, self.stdout, "")
 
 
+class FakeStream:
+    def __init__(self, process=None):
+        self.process = process
+        self.lines = []
+
+    def write(self, value):
+        self.process.received.append(json.loads(value))
+        message = self.process.received[-1]
+        if message["method"] == "initialize":
+            self.process.stdout.lines.append(json.dumps({"id": 0, "result": {}}) + "\n")
+        elif message["method"] == "skills/list":
+            payload = {"data": [{"cwd": message["params"]["cwds"][0], "skills": [], "errors": []}]}
+            self.process.stdout.lines.append(json.dumps({"id": 1, "result": payload}) + "\n")
+
+    def flush(self):
+        pass
+
+    def readline(self):
+        return self.lines.pop(0)
+
+    def close(self):
+        pass
+
+    def read(self):
+        return ""
+
+
+class FakeProcess:
+    def __init__(self):
+        self.received = []
+        self.stdout = FakeStream()
+        self.stderr = FakeStream()
+        self.stdin = FakeStream(self)
+        self.returncode = 0
+
+    def wait(self, timeout=None):
+        return 0
+
+    def terminate(self):
+        self.returncode = -15
+
+
 def resolved(name: str, enabled: bool) -> ResolvedSkill:
     skill = InstalledSkill(
         runtime_path=Path(f"/skills/{name}/SKILL.md"),
@@ -63,6 +105,31 @@ def test_app_server_client_sends_handshake_and_skills_list(tmp_path: Path):
     assert kwargs["timeout"] == 10.0
 
 
+def test_interactive_transport_waits_for_initialize_before_skills_list(tmp_path: Path):
+    process = FakeProcess()
+    calls = []
+
+    def process_factory(*args, **kwargs):
+        calls.append((args, kwargs))
+        return process
+
+    client = CodexClient(
+        environment={"CODEX_HOME": str(tmp_path / "codex-home")},
+        process_factory=process_factory,
+        line_reader=lambda stream, timeout: stream.readline(),
+    )
+
+    result = client.list_skills(tmp_path)
+
+    assert result["data"][0]["cwd"] == str(tmp_path)
+    assert [message["method"] for message in process.received] == [
+        "initialize",
+        "initialized",
+        "skills/list",
+    ]
+    assert calls[0][1]["env"] == {"CODEX_HOME": str(tmp_path / "codex-home")}
+
+
 def test_app_server_client_reports_rpc_errors(tmp_path: Path):
     stdout = json.dumps({"id": 1, "error": {"code": -32601, "message": "missing"}})
 
@@ -75,9 +142,9 @@ def test_skill_overrides_explicitly_set_every_discovered_skill():
 
     assert args[0] == "-c"
     assert "skills.config=" in args[1]
-    assert 'path="/skills/alpha"' in args[1]
+    assert 'path="/skills/alpha/SKILL.md"' in args[1]
     assert "enabled=true" in args[1]
-    assert 'path="/skills/beta"' in args[1]
+    assert 'path="/skills/beta/SKILL.md"' in args[1]
     assert "enabled=false" in args[1]
 
 

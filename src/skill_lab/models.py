@@ -72,6 +72,14 @@ class DiscoveryMode(StrEnum):
     DEGRADED = "degraded"
 
 
+class LaunchChoice(StrEnum):
+    """User-approved action returned by the Textual app."""
+
+    ONCE = "launch-once"
+    SAVE = "save-and-launch"
+    NORMAL = "launch-normal"
+
+
 @dataclass(frozen=True)
 class DiscoveryResult:
     skills: tuple[InstalledSkill, ...]

@@ -28,6 +28,9 @@ packages = ["src/skill_lab"]
 [tool.pytest.ini_options]
 addopts = "-ra"
 asyncio_mode = "auto"
+markers = [
+    "real_codex_e2e: opt-in macOS release gate using an isolated Codex home",
+]
 testpaths = ["tests"]
 
 [tool.ruff]

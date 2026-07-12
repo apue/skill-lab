@@ -38,7 +38,11 @@ def test_make_locator_uses_project_codex_home_and_system_bases(tmp_path: Path):
         LocatorKind.CODEX_HOME, "skills/user/SKILL.md", "user"
     )
     system_locator = make_locator(
-        Path("/app/builtin/SKILL.md"), "system", "builtin", project, codex_home
+        codex_home / "skills/.system/builtin/SKILL.md",
+        "system",
+        "builtin",
+        project,
+        codex_home,
     )
     assert system_locator == SkillLocator(LocatorKind.SYSTEM, "builtin", "builtin")
     assert make_locator(Path("/external/SKILL.md"), "user", "external", project, codex_home) is None

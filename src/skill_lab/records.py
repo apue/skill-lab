@@ -101,7 +101,9 @@ def create_run_record(
         for item in resolved
         if item.enabled
     ]
-    warnings = sorted({warning for item in resolved for warning in item.skill.dependencies})
+    warnings = sorted(
+        {warning for item in resolved if item.enabled for warning in item.skill.dependencies}
+    )
     data: dict[str, Any] = {
         "schema_version": RECORD_SCHEMA_VERSION,
         "run_id": path.stem.split("-", 1)[1],

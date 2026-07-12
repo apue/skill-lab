@@ -10,7 +10,7 @@ Skill Lab 是面向 macOS 个人 Codex 用户的 TUI 实验启动器。它让用
 
 ## Discovery
 
-- 正常模式通过本地 `codex app-server` 的 `skills/list` 获取当前项目的 skills、enabled、scope、source、interface 和 dependencies。
+- 正常模式通过本地 `codex app-server` 的 `skills/list` 获取当前项目的 name、description、enabled、path、scope、interface 和 dependencies。
 - App Server 只负责结构化 discovery 和启动预检，最终会话统一由原生 Codex CLI 启动。
 - App Server 启动、协议、超时、schema 或 per-cwd error 会使实验能力进入 degraded 状态；不得把部分 App Server 结果与 filesystem 结果混合后声称完整。
 - Filesystem fallback 只读 `<project-root>/.codex/skills` 与 `$CODEX_HOME/skills`；`CODEX_HOME` 未设置时使用 `~/.codex/skills`。
@@ -43,7 +43,7 @@ Skill Lab 是面向 macOS 个人 Codex 用户的 TUI 实验启动器。它让用
 ## TUI
 
 - Project root 使用 Git top-level；非 Git 目录使用启动 cwd。
-- Package 默认折叠；方向键导航，左右键展开/折叠，Space 切换 skill 或完整 package，Enter 进入 Review，`q` 退出。
+- 当前 App Server contract 不提供 package/source 字段，因此 MVP 使用 scope 作为稳定分组；package 默认折叠，方向键导航，左右键展开/折叠，Space 切换 skill 或完整 package，Enter 进入 Review，`q` 退出。
 - 混合 package 的 Space 行为是 mixed -> all enabled -> all disabled。
 - `/` 对 name、description、package 做大小写不敏感子串搜索，保持稳定排序；过滤期间切换 package 仍影响完整 package。
 - 有 staged changes 时 `q` 需要确认丢弃；无变化时直接退出。

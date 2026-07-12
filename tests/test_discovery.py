@@ -63,6 +63,37 @@ def test_codex_entry_errors_make_catalog_degraded(tmp_path: Path):
     assert result.errors == ("bad skill",)
 
 
+def test_codex_metadata_remains_authoritative_when_local_yaml_is_loose(tmp_path: Path):
+    project = tmp_path / "project"
+    codex_home = tmp_path / "codex"
+    skill_md = codex_home / "skills/loose/SKILL.md"
+    skill_md.parent.mkdir(parents=True)
+    skill_md.write_text("---\nname: loose\ndescription: workflow: with colon\n---\nBody\n")
+    payload = {
+        "data": [
+            {
+                "cwd": str(project),
+                "skills": [
+                    {
+                        "name": "loose",
+                        "description": "workflow: with colon",
+                        "enabled": True,
+                        "path": str(skill_md),
+                        "scope": "user",
+                    }
+                ],
+                "errors": [],
+            }
+        ]
+    }
+
+    result = normalize_skills_response(payload, project, codex_home)
+
+    assert result.skills[0].name == "loose"
+    assert result.skills[0].version is None
+    assert result.skills[0].fingerprint.startswith("sha256:")
+
+
 def test_filesystem_inventory_checks_only_roots_and_direct_children(tmp_path: Path):
     project = tmp_path / "project"
     codex_home = tmp_path / "codex"

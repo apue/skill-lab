@@ -103,3 +103,13 @@ Status: accepted
 Decision: Skill Lab 不默认绕过 approval、不扩大 sandbox，Codex 子进程继承用户现有权限策略。
 
 Consequences: skill selection 与文件系统权限保持正交，Skill Lab 不成为隐式提权入口。
+
+## 2026-07-12：MVP 使用 scope 作为 package 分组
+
+Status: accepted
+
+Context: 当前 Codex `skills/list` 的 `SkillMetadata` 提供 scope，但不提供稳定 package/source 字段。
+
+Decision: Discovery 保留 Codex scope，并在 MVP selector 中以 scope 作为稳定分组标签。
+
+Consequences: 不从目录结构猜测 package ownership；未来协议提供权威 package/source 后只需更新 discovery adapter。

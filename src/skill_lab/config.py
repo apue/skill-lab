@@ -43,6 +43,8 @@ def make_locator(
     codex_home: Path,
 ) -> SkillLocator | None:
     """Create a portable locator when the runtime path has a supported base."""
+    if scope == "system":
+        return SkillLocator(LocatorKind.SYSTEM, name, name)
     path = runtime_path.resolve(strict=False)
     for kind, base in (
         (LocatorKind.PROJECT, project_root.resolve()),
@@ -53,8 +55,6 @@ def make_locator(
         except ValueError:
             continue
         return SkillLocator(kind, relative.as_posix(), name)
-    if scope == "system":
-        return SkillLocator(LocatorKind.SYSTEM, name, name)
     return None
 
 

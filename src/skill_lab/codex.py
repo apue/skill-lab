@@ -1,14 +1,17 @@
 """Codex App Server protocol and native CLI launch adapter."""
 
 import json
+import selectors
 import subprocess
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
 from skill_lab.models import ResolvedSkill
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
+ProcessFactory = Callable[..., subprocess.Popen[str]]
+LineReader = Callable[[Any, float], str]
 
 
 class CodexError(RuntimeError):
@@ -30,6 +33,21 @@ def _default_runner(argv: Sequence[str], **kwargs: Any) -> subprocess.CompletedP
         raise CodexUnavailableError(f"cannot execute Codex: {argv[0]}") from exc
 
 
+def _default_process_factory(argv: Sequence[str], **kwargs: Any) -> subprocess.Popen[str]:
+    try:
+        return subprocess.Popen(argv, **kwargs)  # noqa: S603
+    except (FileNotFoundError, PermissionError) as exc:
+        raise CodexUnavailableError(f"cannot execute Codex: {argv[0]}") from exc
+
+
+def _default_line_reader(stream: Any, timeout: float) -> str:
+    with selectors.DefaultSelector() as selector:
+        selector.register(stream, selectors.EVENT_READ)
+        if not selector.select(timeout):
+            raise CodexProtocolError("Codex App Server timed out")
+    return stream.readline()
+
+
 def _toml_string(value: str) -> str:
     return json.dumps(value)
 
@@ -38,9 +56,9 @@ def build_skill_overrides(resolved: Sequence[ResolvedSkill]) -> list[str]:
     """Build a complete, one-shot skills.config layer for Codex."""
     rows: list[str] = []
     for item in sorted(resolved, key=lambda value: str(value.skill.runtime_path)):
-        directory = str(item.skill.runtime_path.parent)
+        skill_file = str(item.skill.runtime_path)
         enabled = "true" if item.enabled else "false"
-        rows.append(f"{{path={_toml_string(directory)},enabled={enabled}}}")
+        rows.append(f"{{path={_toml_string(skill_file)},enabled={enabled}}}")
     return ["-c", f"skills.config=[{','.join(rows)}]"]
 
 
@@ -52,20 +70,21 @@ class CodexClient:
         *,
         binary: str = "codex",
         timeout: float = 10.0,
-        runner: Runner = _default_runner,
+        environment: Mapping[str, str] | None = None,
+        runner: Runner | None = None,
+        process_factory: ProcessFactory = _default_process_factory,
+        line_reader: LineReader = _default_line_reader,
     ) -> None:
         self.binary = binary
         self.timeout = timeout
+        self.environment = dict(environment) if environment is not None else None
         self.runner = runner
+        self.process_factory = process_factory
+        self.line_reader = line_reader
 
-    def list_skills(
-        self,
-        cwd: Path,
-        *,
-        force_reload: bool = False,
-        extra_args: Sequence[str] = (),
-    ) -> dict[str, object]:
-        messages = [
+    @staticmethod
+    def _messages(cwd: Path, force_reload: bool) -> list[dict[str, object]]:
+        return [
             {
                 "method": "initialize",
                 "id": 0,
@@ -84,14 +103,83 @@ class CodexClient:
                 "params": {"cwds": [str(cwd)], "forceReload": force_reload},
             },
         ]
+
+    @staticmethod
+    def _result(response: dict[str, object]) -> dict[str, object]:
+        if isinstance(response.get("error"), dict):
+            error = response["error"]
+            raise CodexProtocolError(str(error.get("message", "skills/list failed")))
+        result = response.get("result")
+        if not isinstance(result, dict):
+            raise CodexProtocolError("skills/list returned an invalid result")
+        return result
+
+    def _read_response(self, process: Any, request_id: int) -> dict[str, object]:
+        while True:
+            line = self.line_reader(process.stdout, self.timeout)
+            if not line:
+                error = process.stderr.read().strip()
+                raise CodexProtocolError(f"Codex App Server closed before response: {error}")
+            try:
+                message = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise CodexProtocolError("Codex App Server returned invalid JSON") from exc
+            if isinstance(message, dict) and message.get("id") == request_id:
+                return message
+
+    def list_skills(
+        self,
+        cwd: Path,
+        *,
+        force_reload: bool = False,
+        extra_args: Sequence[str] = (),
+    ) -> dict[str, object]:
+        messages = self._messages(cwd, force_reload)
+        if self.runner is None:
+            process_kwargs: dict[str, object] = {
+                "stdin": subprocess.PIPE,
+                "stdout": subprocess.PIPE,
+                "stderr": subprocess.PIPE,
+                "text": True,
+                "bufsize": 1,
+            }
+            if self.environment is not None:
+                process_kwargs["env"] = self.environment
+            process = self.process_factory(
+                [self.binary, *extra_args, "app-server"],
+                **process_kwargs,
+            )
+            if process.stdin is None or process.stdout is None or process.stderr is None:
+                raise CodexProtocolError("Codex App Server pipes are unavailable")
+            try:
+                process.stdin.write(f"{json.dumps(messages[0])}\n")
+                process.stdin.flush()
+                self._result(self._read_response(process, 0))
+                for message in messages[1:]:
+                    process.stdin.write(f"{json.dumps(message)}\n")
+                process.stdin.flush()
+                return self._result(self._read_response(process, 1))
+            finally:
+                process.stdin.close()
+                try:
+                    process.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    process.terminate()
+                    process.wait(timeout=1)
+
         serialized = "".join(f"{json.dumps(message)}\n" for message in messages)
         try:
+            runner_kwargs: dict[str, object] = {
+                "input": serialized,
+                "capture_output": True,
+                "text": True,
+                "timeout": self.timeout,
+            }
+            if self.environment is not None:
+                runner_kwargs["env"] = self.environment
             completed = self.runner(
                 [self.binary, *extra_args, "app-server"],
-                input=serialized,
-                capture_output=True,
-                text=True,
-                timeout=self.timeout,
+                **runner_kwargs,
             )
         except subprocess.TimeoutExpired as exc:
             raise CodexProtocolError("Codex App Server timed out") from exc
@@ -110,13 +198,7 @@ class CodexClient:
                 break
         if response is None:
             raise CodexProtocolError("Codex App Server did not answer skills/list")
-        if isinstance(response.get("error"), dict):
-            error = response["error"]
-            raise CodexProtocolError(str(error.get("message", "skills/list failed")))
-        result = response.get("result")
-        if not isinstance(result, dict):
-            raise CodexProtocolError("skills/list returned an invalid result")
-        return result
+        return self._result(response)
 
     def preflight(self, cwd: Path, resolved: Sequence[ResolvedSkill]) -> bool:
         """Check that one-shot overrides produce the exact reviewed state."""
