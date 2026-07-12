@@ -131,6 +131,8 @@ MVP 将实现：
 - 下载、项目可见性和本次运行启用是三个不同状态。
 - 结果评价优先保留人的判断，不急于用单一自动分数替代。
 - 第三方 skill 视为不可信的指令和代码，使用前需要审查。
+- discovery 只读明确的 skill roots，不扫描 Codex 凭据、会话或日志。
+- Skill Lab 不降低其启动的 Codex 子进程 sandbox/approval 策略。
 
 ## License
 

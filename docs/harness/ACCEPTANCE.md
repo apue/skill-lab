@@ -12,6 +12,7 @@ Status: review
 - [ ] `uv run pytest` 全部通过。
 - [ ] `uv run ruff check .` 和 `uv run ruff format --check .` 通过。
 - [ ] README、产品规格、架构、决策、验证计划和实施计划可供中文 review。
+- [ ] 根目录 `AGENTS.md` 规定范围、验证、模块边界和文件访问策略。
 - [ ] 公开前检查提交文件，不包含 token、认证文件或机器专用绝对路径。
 
 ## 验收场景
@@ -29,6 +30,7 @@ Status: review
 - [ ] global、project 和 run overlay 三层语义可理解。
 - [ ] `Launch once` 与 `Save as project defaults and launch` 区别清楚。
 - [ ] 模块边界支持未来替换 Codex 适配方式。
+- [ ] 权限文档区分 Skill Lab 本身与 Codex 子进程，并禁止读取 Codex 凭据/会话数据。
 
 ## 非本次验收范围
 

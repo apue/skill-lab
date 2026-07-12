@@ -62,6 +62,29 @@ MVP 计划包含三个页面：
 - pytest：测试。
 - Ruff：lint 与格式检查。
 
+## Capability Boundary
+
+Skill Lab 采用应用级路径策略，而不是在 MVP 中实现 OS 级 sandbox。
+
+### Discovery capability
+
+- 首选 Codex `skills/list`，减少对用户目录的直接扫描。
+- fallback 只接受明确配置的 skill roots。
+- 允许跟随 skill symlink 读取目标 `SKILL.md` metadata。
+- 禁止扫描整个 `~/.codex`，禁止读取 auth/session/log/history，禁止执行第三方脚本。
+
+### Write capability
+
+- TUI selection 本身不产生写入。
+- `Launch once` 不写项目默认配置。
+- `Save as project defaults and launch` 是目标项目写入的明确授权动作。
+- 写入前解析目标路径和符号链接，验证目标位于 project root 内，再进行原子替换。
+- MVP 不写 `~/.codex` 或任意用户级状态目录。
+
+### Child process capability
+
+Codex adapter 只提供 skill selection 和必要启动信息，不添加绕过 approval 或扩大 sandbox 的默认参数。Codex 子进程的权限仍由用户现有 Codex 配置控制。
+
 ## 错误处理原则
 
 - 配置解析失败时不启动 Codex，并指出具体文件与字段。
@@ -98,5 +121,9 @@ MVP 计划包含三个页面：
   - 缓解：启动前用 Codex prompt/config 诊断结果做契约验证。
 - 过早扩张为 package manager。
   - 缓解：MVP 明确排除 marketplace、安装和更新。
+- 路径遍历或 symlink 使项目写入逃逸到外部目录。
+  - 缓解：集中 path guard，解析真实路径后验证 project-root containment，并以单元测试覆盖。
+- discovery 意外读取 Codex 凭据或会话数据。
+  - 缓解：优先 API discovery；fallback 使用 allowlisted roots 和明确文件名，不进行 home-directory crawl。
 - skill 效果高度随机。
   - 缓解：记录环境，后续加入重复运行与人工评价，而不是单次自动评分。
